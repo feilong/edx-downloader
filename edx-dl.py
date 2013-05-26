@@ -143,7 +143,10 @@ if __name__ == '__main__':
 
     ## Getting Available Weeks
     courseware = get_page_contents(COURSEWARE, headers)
-    soup = BeautifulSoup(courseware)
+    #with open('courseware.txt','w') as f:
+    #    f.write(str(courseware))
+    soup = BeautifulSoup(courseware,'html5lib')
+    #soup = BeautifulSoup(courseware.decode('utf-8','ignore'),fromEncoding='utf-8')
     data = soup.section.section.div.div.nav
     WEEKS = data.find_all('div')
     weeks = [(w.h3.a.string, ['https://www.edx.org' + a['href'] for a in
@@ -171,32 +174,46 @@ if __name__ == '__main__':
 
 
     video_id = []
+    aws_links = []
     for link in links:
         print("Processing '%s'..." % link)
         page = get_page_contents(link, headers)
-        splitter = re.compile(b'data-streams=(?:&#34;|").*1.0[0]*:')
-        id_container = splitter.split(page)[1:]
-        video_id += [link[:YOUTUBE_VIDEO_ID_LENGTH] for link in
-                     id_container]
+        soup = BeautifulSoup(page,'html5lib')
+        seqs = soup.findAll('div', {'class':'seq_contents'})
+        for seq in seqs:
+            video_sources = unicode(seq).split('video-sources')[1:]
+            for vs in video_sources:
+                aws_links.append(vs.split('a href="')[1].split('"')[0])
 
-    video_link = ['http://youtube.com/watch?v=' + v_id.decode("utf-8") for v_id in video_id]
+        #with open('page_content.txt','w') as f:
+            #f.write(str(page))
+            #exit(0)
+        #splitter = re.compile(b'data-streams=(?:&#34;|").*1.0[0]*:')
+        #id_container = splitter.split(page)[1:]
+        #video_id += [link[:YOUTUBE_VIDEO_ID_LENGTH] for link in
+                     #id_container]
 
-    # Get Available Video_Fmts
-    os.system('youtube-dl -F %s' % video_link[-1])
-    video_fmt = int(input('Choose Format code: '))
-
-    # Get subtitles
-    subtitles = input('Download subtitles (y/n)? ') == 'y'
-        
+    #video_link = ['http://youtube.com/watch?v=' + v_id.decode("utf-8") for v_id in video_id]
+#
+    ## Get Available Video_Fmts
+    #os.system('youtube-dl -F %s' % video_link[-1])
+    #video_fmt = int(input('Choose Format code: '))
+#
+    ## Get subtitles
+    #subtitles = input('Download subtitles (y/n)? ') == 'y'
+       # 
     # Download Videos
     c = 0
-    for v in video_link:
+    for v in aws_links:
         c += 1
-        cmd = 'youtube-dl -o "Downloaded/' + selected_course[0] + '/' + str(c).zfill(2) + '-%(title)s.%(ext)s" -f ' + str(video_fmt)
-        if(subtitles):
-            cmd += ' --write-srt'
-        cmd += ' ' + str(v)
+        fname = v.rsplit('/',1)[-1]
+        cmd = 'wget -c -O "Downloaded/' + selected_course[0] + '/' + str(c).zfill(2) + '-' + fname + '" ' + str(v)
         os.system(cmd)
-
+        #cmd = 'youtube-dl -o "Downloaded/' + selected_course[0] + '/' + str(c).zfill(2) + '-%(title)s.%(ext)s" -f ' + str(video_fmt)
+        #if(subtitles):
+            #cmd += ' --write-srt'
+        #cmd += ' ' + str(v)
+        #os.system(cmd)
+#
     # Say Good Bye :)
     print('Videos have been downloaded, thanks for using our tool, Good Bye :)')
